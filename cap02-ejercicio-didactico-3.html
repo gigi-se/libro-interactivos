@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ejercicio didáctico 3 — Factorización prima</title>
+<style>
+  :root { --principal:#007285; --fondo:#f0fcff; --texto:#1b1b1b; --reto:#E65100; --gris:#5c5c5c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Helvetica,Arial,sans-serif; color:var(--texto); background:#fff; line-height:1.45; }
+  header { background:var(--principal); color:#fff; padding:14px 18px; }
+  header small { opacity:.85; letter-spacing:.06em; text-transform:uppercase; }
+  header h1 { margin:2px 0 0; font-size:1.3rem; }
+  main { max-width:640px; margin:0 auto; padding:14px 16px 36px; }
+  .caja { background:var(--fondo); border-top:3px solid var(--principal); border-bottom:3px solid var(--principal); padding:10px 12px; margin:10px 0; }
+  svg { width:100%; height:auto; max-height:340px; display:block; }
+  .nodo circle { fill:#fff; stroke:var(--gris); stroke-width:1.5; }
+  .nodo.primo circle { fill:#fff1e6; stroke:var(--reto); stroke-width:2.2; }
+  .nodo text { font-size:12px; font-weight:bold; fill:var(--texto); text-anchor:middle; dominant-baseline:middle; }
+  .arista { stroke:var(--gris); stroke-width:1.5; opacity:.6; }
+  .formula { text-align:center; font-family:Georgia,'Times New Roman',serif; font-size:1.2rem; margin:6px 0; }
+  .nota { text-align:center; color:var(--gris); font-size:.92rem; margin:4px 0 8px; min-height:1.4em; }
+  .ctl { display:grid; grid-template-columns:24px 62px 1fr; align-items:center; gap:8px; margin:8px 0; }
+  .ctl b { color:var(--principal); font-family:Georgia,serif; font-size:1.1rem; }
+  .ctl input[type=number] { width:62px; padding:4px; font-size:1rem; border:2px solid var(--principal); border-radius:6px; text-align:center; }
+  input[type=range] { width:100%; accent-color:var(--principal); }
+  .botones { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  button { background:var(--reto); color:#fff; border:0; border-radius:6px; padding:9px 14px; font-size:.95rem; cursor:pointer; }
+  .datos { font-size:.95rem; margin-top:10px; }
+  .datos strong { color:var(--principal); }
+  .leyenda { font-size:.85rem; color:var(--gris); margin-top:6px; }
+  .leyenda i { display:inline-block; width:12px; height:12px; border-radius:50%; border:2px solid var(--reto); background:#fff1e6; vertical-align:-1px; margin-right:4px; }
+  footer { font-size:.8rem; color:#666; text-align:center; padding:10px; }
+</style>
+</head>
+<body>
+<header><small>Mat. discreta · Ejercicio 3</small><h1>Árbol de factorización prima</h1></header>
+<main>
+  <p>Elige un número. Cada número compuesto se parte en dos factores mayores que 1, hasta que todas las hojas sean primos (en naranja).</p>
+
+  <div class="caja">
+    <svg id="lienzo" viewBox="0 0 320 240" role="img" aria-label="Árbol de factorización"></svg>
+    <div class="formula" id="formula"></div>
+    <div class="nota" id="nota"></div>
+  </div>
+
+  <div class="ctl"><b>n</b><input type="number" id="num" min="2" max="200" value="84" aria-label="Valor de n"><input type="range" id="n" min="2" max="200" value="84" aria-label="Valor de n"></div>
+
+  <div class="botones"><button id="azar">Número al azar</button></div>
+
+  <p class="datos" id="datos"></p>
+  <p class="leyenda"><i></i>número primo (hoja del árbol)</p>
+</main>
+<footer>Libro de Matemática · actividad interactiva</footer>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('lienzo');
+  var rango = document.getElementById('n'), caja = document.getElementById('num');
+
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  // Parte n en d y n/d, con d = mayor divisor <= raíz de n (árbol equilibrado)
+  function arbol(n) {
+    for (var d = Math.floor(Math.sqrt(n)); d >= 2; d--) {
+      if (n % d === 0) return { v: n, hijos: [arbol(d), arbol(n / d)] };
+    }
+    return { v: n, hijos: [] };
+  }
+  function hojas(nodo, lista) {
+    if (!nodo.hijos.length) { lista.push(nodo.v); return lista; }
+    nodo.hijos.forEach(function (h) { hojas(h, lista); });
+    return lista;
+  }
+  function profundidad(nodo) {
+    return nodo.hijos.length ? 1 + Math.max.apply(null, nodo.hijos.map(profundidad)) : 0;
+  }
+  function divisores(n) {
+    var d = []; for (var i = 1; i <= n; i++) if (n % i === 0) d.push(i); return d;
+  }
+  function potencias(lista) {
+    var cuenta = {}, orden = [];
+    lista.forEach(function (p) { if (!cuenta[p]) { cuenta[p] = 0; orden.push(p); } cuenta[p]++; });
+    return orden.map(function (p) { return cuenta[p] > 1 ? p + '<sup>' + cuenta[p] + '</sup>' : '' + p; }).join(' · ');
+  }
+
+  function dibujar(n) {
+    var raiz = arbol(n), fs = hojas(raiz, []);
+    var ord = fs.slice().sort(function (a, b) { return a - b; });
+    var prof = profundidad(raiz), paso = 52, alto = 56;
+    var W = Math.max(fs.length * paso + 20, 300), H = prof * alto + 52;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var idx = 0, nodos = [], aristas = [];
+    (function colocar(nodo, nivel) {
+      if (!nodo.hijos.length) { nodo.x = 10 + paso / 2 + idx * paso; idx++; }
+      else { nodo.hijos.forEach(function (h) { colocar(h, nivel + 1); }); nodo.x = (nodo.hijos[0].x + nodo.hijos[1].x) / 2; }
+      nodo.y = 26 + nivel * alto; nodos.push(nodo);
+      nodo.hijos.forEach(function (h) { aristas.push([nodo, h]); });
+    })(raiz, 0);
+    aristas.forEach(function (a) {
+      el('line', { x1: a[0].x, y1: a[0].y, x2: a[1].x, y2: a[1].y, 'class': 'arista' }, svg);
+    });
+    nodos.forEach(function (nd) {
+      var g = el('g', { 'class': 'nodo' + (nd.hijos.length ? '' : ' primo') }, svg);
+      el('circle', { cx: nd.x, cy: nd.y, r: 16 }, g);
+      el('text', { x: nd.x, y: nd.y }, g).textContent = nd.v;
+    });
+    document.getElementById('formula').innerHTML = n + ' = ' + (fs.length > 1 ? ord.join(' × ') : n);
+    document.getElementById('nota').textContent = fs.length > 1
+      ? n + ' es compuesto: se descompone en ' + fs.length + ' factores primos.'
+      : n + ' es primo: solo se divide por 1 y por sí mismo.';
+    var divs = divisores(n);
+    document.getElementById('datos').innerHTML =
+      'Factorización prima: <strong>' + n + ' = ' + (fs.length > 1 ? potencias(ord) : n) + '</strong><br>' +
+      'Divisores positivos (' + divs.length + '): ' + divs.join(', ');
+  }
+
+  function cambiar(v) {
+    v = Math.max(2, Math.min(200, Math.round(+v) || 2));
+    rango.value = v; caja.value = v; dibujar(v);
+  }
+  rango.oninput = function () { cambiar(rango.value); };
+  caja.onchange = function () { cambiar(caja.value); };
+  document.getElementById('azar').onclick = function () { cambiar(2 + Math.floor(Math.random() * 199)); };
+  cambiar(84);
+})();
+</script>
+</body>
+</html>

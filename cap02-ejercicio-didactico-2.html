@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ejercicio didáctico 2 — Combinaciones</title>
+<style>
+  :root { --principal:#007285; --fondo:#f0fcff; --texto:#1b1b1b; --reto:#E65100; --gris:#5c5c5c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Helvetica,Arial,sans-serif; color:var(--texto); background:#fff; line-height:1.45; }
+  header { background:var(--principal); color:#fff; padding:14px 18px; }
+  header small { opacity:.85; letter-spacing:.06em; text-transform:uppercase; }
+  header h1 { margin:2px 0 0; font-size:1.3rem; }
+  main { max-width:640px; margin:0 auto; padding:14px 16px 36px; }
+  .caja { background:var(--fondo); border-top:3px solid var(--principal); border-bottom:3px solid var(--principal); padding:10px 12px; margin:10px 0; }
+  svg { width:100%; height:auto; max-height:300px; display:block; }
+  .etq { font-size:12px; fill:var(--gris); }
+  .ficha circle { fill:#e6f6f9; stroke:var(--principal); stroke-width:1.6; transition:fill .3s, stroke .3s; }
+  .ficha.nueva circle { fill:var(--reto); stroke:var(--reto); }
+  .ficha.nueva text { fill:#fff; }
+  .ficha text { font-size:13px; font-weight:bold; fill:var(--texto); text-anchor:middle; }
+  .ficha { transition: transform .7s ease; }
+  .hueco { fill:#fff; stroke:var(--principal); stroke-width:1.5; stroke-dasharray:3 3; opacity:.45; }
+  .formula { text-align:center; font-family:Georgia,'Times New Roman',serif; font-size:1.1rem; margin:6px 0; }
+  .nota { text-align:center; color:var(--gris); font-size:.92rem; margin:4px 0 8px; min-height:2.6em; }
+  .ctl { display:grid; grid-template-columns:90px 34px 1fr; align-items:center; gap:8px; margin:8px 0; }
+  .ctl b { color:var(--principal); }
+  .ctl output { text-align:right; font-weight:bold; }
+  input[type=range] { width:100%; accent-color:var(--principal); }
+  .botones { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  button { background:var(--reto); color:#fff; border:0; border-radius:6px; padding:9px 14px; font-size:.95rem; cursor:pointer; }
+  button.sec { background:#fff; color:var(--principal); border:2px solid var(--principal); }
+  .conteo { font-size:.95rem; }
+  .conteo strong { color:var(--principal); }
+  details { margin-top:12px; border:1px solid #cfe3e7; border-radius:6px; padding:8px 12px; }
+  summary { cursor:pointer; color:var(--principal); font-weight:bold; }
+  .lista { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; max-height:220px; overflow:auto; }
+  .lista span { background:var(--fondo); border:1px solid var(--principal); border-radius:5px; padding:2px 7px; font-size:.85rem; }
+  footer { font-size:.8rem; color:#666; text-align:center; padding:10px; }
+</style>
+</head>
+<body>
+<header><small>Mat. discreta · Ejercicio 2</small><h1>Combinaciones: el orden no importa</h1></header>
+<main>
+  <p>Elige cuántas opciones hay y cuántas se toman. El grupo final siempre se ordena por número: sacar las mismas fichas en otro orden <strong>no</strong> crea una combinación nueva.</p>
+
+  <div class="caja">
+    <svg id="lienzo" viewBox="0 0 360 230" role="img" aria-label="Animación de una combinación"></svg>
+    <div class="formula" id="formula"></div>
+    <div class="nota" id="nota"></div>
+  </div>
+
+  <div class="ctl"><b>Opciones</b><output id="vn">5</output><input type="range" id="n" min="4" max="8" value="5" aria-label="Número de opciones"></div>
+  <div class="ctl"><b>Extracciones</b><output id="vr">3</output><input type="range" id="r" min="2" max="4" value="3" aria-label="Número de extracciones"></div>
+
+  <p class="conteo" id="conteo"></p>
+
+  <div class="botones">
+    <button id="otra">Otro grupo</button>
+    <button id="pausa" class="sec">Pausar</button>
+  </div>
+
+  <details>
+    <summary>Ver todos los grupos posibles</summary>
+    <div class="lista" id="lista"></div>
+  </details>
+</main>
+<footer>Libro de Matemática · actividad interactiva</footer>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('lienzo');
+  var inN = document.getElementById('n'), inR = document.getElementById('r');
+  var timers = [], pausado = false, bucle = null;
+
+  function fact(k) { var f = 1; for (var i = 2; i <= k; i++) f *= i; return f; }
+  function fmt(x) { return x.toLocaleString('es'); }
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function limpiar() { timers.forEach(clearTimeout); timers = []; clearTimeout(bucle); }
+  function mezclar(a) {
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  function pos(i, total) { var margen = 24, ancho = 360 - 2 * margen; return total === 1 ? 180 : margen + i * ancho / (total - 1); }
+
+  function grupos(N, R) {
+    var res = [];
+    (function rec(inicio, actual) {
+      if (actual.length === R) { res.push(actual.slice()); return; }
+      for (var i = inicio; i <= N; i++) { actual.push(i); rec(i + 1, actual); actual.pop(); }
+    })(1, []);
+    return res;
+  }
+
+  function textos(N, R) {
+    var c = fact(N) / (fact(R) * fact(N - R));
+    document.getElementById('vn').textContent = N;
+    document.getElementById('vr').textContent = R;
+    document.getElementById('formula').textContent =
+      'C(' + N + ', ' + R + ') = ' + N + '! / (' + R + '! · ' + (N - R) + '!) = ' + fmt(c);
+    document.getElementById('conteo').innerHTML =
+      'Cada grupo de ' + R + ' fichas se puede ordenar de ' + fmt(fact(R)) + ' formas, pero cuenta como <strong>uno solo</strong>: ' +
+      fmt(fact(N) / fact(N - R)) + ' ÷ ' + fmt(fact(R)) + ' = <strong>' + fmt(c) + '</strong> grupos distintos.';
+    var lista = document.getElementById('lista');
+    lista.innerHTML = '';
+    grupos(N, R).forEach(function (g) {
+      var s = document.createElement('span'); s.textContent = '{' + g.join(', ') + '}'; lista.appendChild(s);
+    });
+  }
+
+  function correr() {
+    limpiar();
+    var N = +inN.value, R = +inR.value;
+    if (R > N) { R = N; inR.value = R; }
+    textos(N, R);
+    document.getElementById('nota').textContent = 'Se toman fichas una por una; el orden en que salen no importa.';
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    el('text', { x: 180, y: 18, 'text-anchor': 'middle', 'class': 'etq' }, svg).textContent = 'Fichas disponibles';
+    el('text', { x: 180, y: 140, 'text-anchor': 'middle', 'class': 'etq' }, svg).textContent = 'Grupo';
+
+    var fichas = [], k, g;
+    for (k = 0; k < N; k++) el('circle', { cx: pos(k, N), cy: 62, r: 15, 'class': 'hueco' }, svg);
+    for (k = 0; k < R; k++) el('circle', { cx: pos(k, R), cy: 190, r: 15, 'class': 'hueco' }, svg);
+    for (k = 0; k < N; k++) {
+      g = el('g', { 'class': 'ficha' }, svg);
+      g.style.transform = 'translate(' + pos(k, N) + 'px,62px)';
+      el('circle', { r: 15 }, g);
+      el('text', { y: 4 }, g).textContent = k + 1;
+      fichas.push(g);
+    }
+
+    var orden = mezclar(fichas.map(function (_, i) { return i; })).slice(0, R);
+    orden.forEach(function (idx, paso) {
+      timers.push(setTimeout(function () {
+        fichas.forEach(function (f) { f.classList.remove('nueva'); });
+        fichas[idx].classList.add('nueva');
+        fichas[idx].style.transform = 'translate(' + pos(paso, R) + 'px,190px)';
+      }, 700 + paso * 1000));
+    });
+    var tOrdenar = 700 + R * 1000 + 300;
+    timers.push(setTimeout(function () {
+      var ordenado = orden.slice().sort(function (a, b) { return a - b; });
+      fichas.forEach(function (f) { f.classList.remove('nueva'); });
+      ordenado.forEach(function (idx, rango) {
+        fichas[idx].style.transform = 'translate(' + pos(rango, R) + 'px,190px)';
+      });
+      document.getElementById('nota').textContent =
+        'Al terminar, el grupo se muestra en orden numérico: {' + ordenado.map(function (i) { return i + 1; }).join(', ') +
+        '}. Cambiar el orden de extracción no crea otra combinación.';
+    }, tOrdenar));
+    bucle = setTimeout(function () { if (!pausado) correr(); }, tOrdenar + 4000);
+  }
+
+  inN.oninput = function () { if (+inR.value > +inN.value) inR.value = inN.value; correr(); };
+  inR.oninput = correr;
+  document.getElementById('otra').onclick = function () { pausado = false; document.getElementById('pausa').textContent = 'Pausar'; correr(); };
+  document.getElementById('pausa').onclick = function () {
+    pausado = !pausado;
+    this.textContent = pausado ? 'Reanudar' : 'Pausar';
+    if (!pausado) correr();
+  };
+  correr();
+})();
+</script>
+</body>
+</html>
