@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laboratorio de límites y derivadas</title>
+<style>
+:root{--bg:#fff;--fg:#1d1d1d;--card:#F0FCFF;--pri:#007285;--ok:#00796B;--bad:#E65100;--line:#b5dbe3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a1d;--fg:#e8f1f3;--card:#14272c;--pri:#4dc3d9;--ok:#5fd1c2;--bad:#ff9d57;--line:#2c4a52}}
+html{height:100%}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Times New Roman",Times,serif;max-width:760px;margin:auto;padding:12px}
+h1,nav button,#score{font-family:Helvetica,Arial,sans-serif}h1{color:var(--pri);font-size:1.4rem;margin:.3em 0}nav{display:flex;gap:6px;margin:10px 0}
+nav button{flex:1;padding:9px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;cursor:pointer;font-size:.95rem}
+nav button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+section{display:none;background:var(--card);border-radius:10px;padding:14px}section.on{display:block}
+canvas{width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px}
+input[type=range]{width:100%;accent-color:var(--pri)}input[type=number]{width:110px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+table{border-collapse:collapse;width:100%;text-align:center}td,th{border-bottom:1px solid var(--line);padding:4px}
+.q{border-top:1px solid var(--line);padding:10px 0}.q button{padding:6px 12px;margin-left:6px;border:0;border-radius:6px;background:var(--pri);color:#fff;cursor:pointer}
+.q .h{background:transparent;color:var(--pri);border:1px solid var(--pri)}.fb{margin:6px 0 0;font-weight:600}.ok{color:var(--ok)}.bad{color:var(--bad)}
+#score{font-size:1.1rem;font-weight:700;color:var(--pri)}
+</style></head><body>
+<h1>Laboratorio de límites y derivadas</h1>
+<nav><button class="on" data-t="a">Límites</button><button data-t="b">Derivadas</button><button data-t="c">Ejercicios</button></nav>
+
+<section id="a" class="on">
+<p>Función <b>f(x) = (x² − 4)/(x − 2)</b>. Acércate a <b>x = 2</b> desde ambos lados.</p>
+<label>Distancia h = <b id="hv">0.5</b></label>
+<input id="hs" type="range" min="0" max="3" step="0.01" value="1.7">
+<canvas id="c1" width="640" height="320"></canvas>
+<table><tr><th>x = 2 − h</th><th>f(x)</th><th>x = 2 + h</th><th>f(x)</th></tr><tr id="tr"></tr></table>
+<p id="lim"></p>
+</section>
+
+<section id="b">
+<p>Función <b>f(x) = x²</b> en <b>x = 1</b>. Reduce h y la secante se vuelve tangente.</p>
+<label>h = <b id="h2v">1</b> &nbsp; Pendiente secante = <b id="sl"></b></label>
+<input id="h2" type="range" min="-3" max="3" step="0.01" value="1.5">
+<canvas id="c2" width="640" height="320"></canvas>
+<p>Derivada exacta: f′(1) = 2.</p>
+</section>
+
+<section id="c">
+<p id="score">Aciertos: 0 / 6</p><div id="qs"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+ document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));draw()});
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v)}
+function plot(cv,fs,x0,x1,y0,y1,extra){
+ const c=cv.getContext('2d'),W=cv.width,H=cv.height,X=x=>(x-x0)/(x1-x0)*W,Y=y=>H-(y-y0)/(y1-y0)*H;
+ c.clearRect(0,0,W,H);c.strokeStyle=css('--line');c.lineWidth=1;c.beginPath();
+ c.moveTo(X(x0),Y(0));c.lineTo(X(x1),Y(0));c.moveTo(X(0),Y(y0));c.lineTo(X(0),Y(y1));c.stroke();
+ fs.forEach(([f,col,w])=>{c.strokeStyle=css(col);c.lineWidth=w||2;c.beginPath();let on=false;
+  for(let i=0;i<=W;i++){const x=x0+i/W*(x1-x0),y=f(x);if(!isFinite(y)){on=false;continue}
+   on?c.lineTo(i,Y(y)):c.moveTo(i,Y(y));on=true}c.stroke()});
+ extra&&extra(c,X,Y)}
+function dot(c,x,y,col,hollow){c.beginPath();c.arc(x,y,6,0,7);c.fillStyle=hollow?css('--bg'):css(col);c.fill();c.strokeStyle=css(col);c.lineWidth=2;c.stroke()}
+const f1=x=>x===2?NaN:(x*x-4)/(x-2);
+function draw(){
+ const h=+$('hs').value;$('hv').textContent=h.toFixed(2);
+ const L=2-h,R=2+h;
+ $('tr').innerHTML=`<td>${L.toFixed(3)}</td><td>${f1(L).toFixed(3)}</td><td>${R.toFixed(3)}</td><td>${f1(R).toFixed(3)}</td>`;
+ $('lim').textContent=h<0.05?'Ambos lados se acercan a 4: el límite es 4.':'Mueve h hacia 0 para ver el comportamiento.';
+ plot($('c1'),[[f1,'--pri',3]],-1,5,-1,7,(c,X,Y)=>{dot(c,X(2),Y(4),'--pri',true);dot(c,X(L),Y(f1(L)),'--bad');dot(c,X(R),Y(f1(R)),'--ok')});
+ const h2=+$('h2').value,g=x=>x*x;$('h2v').textContent=h2.toFixed(2);
+ const m=Math.abs(h2)<1e-9?NaN:(g(1+h2)-g(1))/h2;$('sl').textContent=isNaN(m)?'—':m.toFixed(3);
+ plot($('c2'),[[g,'--pri',3],[x=>1+m*(x-1),'--bad',2],[x=>1+2*(x-1),'--ok',1]],-1,3,-1,5,(c,X,Y)=>{dot(c,X(1),Y(1),'--pri');dot(c,X(1+h2),Y(g(1+h2)),'--bad')});
+}
+$('hs').oninput=$('h2').oninput=draw;
+const Q=[["lim<sub>x→3</sub> (x²−9)/(x−3)",6,"Factoriza x²−9."],
+["lim<sub>x→∞</sub> (2x+1)/(x−4)",2,"Divide entre x."],
+["lim<sub>x→0</sub> sen(3x)/x",3,"Escribe sen(3x)/x = 3·sen(3x)/(3x)."],
+["f(x)=x³−2x. Calcula f′(2)",10,"f′(x)=3x²−2."],
+["f(x)=x·eˣ. Calcula f′(0)",1,"Regla del producto."],
+["f(x)=(2x+1)³. Calcula f′(1)",54,"Regla de la cadena: 3(2x+1)²·2."]];
+let got=new Set();
+$('qs').innerHTML=Q.map((q,i)=>`<div class="q"><b>${i+1}.</b> ${q[0]} = <input type="number" step="any" id="i${i}"><button onclick="chk(${i})">Comprobar</button><button class="h" onclick="$('f${i}').textContent='Pista: ${q[2]}'">Pista</button><div class="fb" id="f${i}"></div></div>`).join('');
+function chk(i){const v=parseFloat($('i'+i).value),f=$('f'+i);
+ if(Math.abs(v-Q[i][1])<0.01){f.textContent='¡Correcto!';f.className='fb ok';got.add(i)}
+ else{f.textContent='Aún no. Revisa e inténtalo otra vez.';f.className='fb bad'}
+ $('score').textContent=`Aciertos: ${got.size} / ${Q.length}`+(got.size>=5?' — ¡Reto superado!':'')}
+draw();
+</script></body></html>
