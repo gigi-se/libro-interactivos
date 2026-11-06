@@ -1,0 +1,37 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Derivadas: de la secante a la tangente</title><style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff}
+header{background:#00738A;padding:24px 27px 22px}header small{display:block;color:#bfe3ea;font-size:18px;letter-spacing:.5px;text-transform:uppercase}
+header h1{margin:8px 0 0;color:#fff;font-size:30px}main{max-width:912px;margin:34px auto;padding:0 14px}
+p.i{font-size:19px;line-height:1.55;margin:0 0 26px}.panel{border-top:4px solid #00738A;background:#F0FBFE;padding:22px}
+canvas{width:100%;background:transparent;display:block}.ctl{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;align-items:center;font-size:16px}
+.ctl label{display:flex;flex-direction:column;gap:4px;min-width:200px;flex:1}.ctl select{padding:6px;font-size:15px}input[type=range]{accent-color:#E65100}
+.f{font-family:Georgia,serif;font-size:24px;text-align:center;margin:16px 0 4px}.note{text-align:center;color:#555;font-size:15px;line-height:1.5}
+.ok{color:#E65100}h2{font-size:22px;color:#00738A;margin:34px 0 8px}.ex{background:#F0FBFE;border-left:4px solid #E65100;padding:12px 16px;margin:12px 0;font-size:17px}
+.ex input{width:120px;padding:6px;font-size:16px;margin:0 8px;border:1px solid #9bbcc4;border-radius:4px}.ex button{background:#00738A;color:#fff;border:0;padding:7px 14px;border-radius:4px;font-size:15px;cursor:pointer}
+.g{color:#2e7d32;font-weight:700}.b{color:#c62828;font-weight:700}#sc{font-size:17px;margin:6px 0}
+</style></head><body><header><small>CÁLCULO · EJERCICIO 2</small><h1>Derivadas: de la secante a la tangente</h1></header><main>
+<p class="i">La función es f(x) = x². Mueve el punto a y reduce h: la pendiente de la secante naranja se acerca a la de la tangente, que es f′(a) = 2a.</p><div class="panel"><canvas id="cv" width="860" height="380"></canvas><div class="ctl"><label>Punto a = <span id="va"></span><input type="range" id="a" min="-2" max="2" step="0.1" value="1"></label><label>Incremento h = <span id="vh"></span><input type="range" id="h" min="-2" max="2" step="0.05" value="1.5"></label></div>
+<div class="f" id="fo"></div><div class="note" id="no"></div></div>
+<h2>Ejercicios autocorregidos</h2><div id="sc">Aciertos: <b id="nn">0</b> de 5</div><div id="exs"></div>
+<script>
+const $=i=>document.getElementById(i),O="#E65100",TL="#00738A",cv=$("cv"),c=cv.getContext("2d"),W=cv.width,H=cv.height;
+let X,Y;function frame(x0,x1,y0,y1){X=x=>(x-x0)/(x1-x0)*W;Y=y=>H-(y-y0)/(y1-y0)*H;c.clearRect(0,0,W,H);c.strokeStyle="#c5dde2";c.lineWidth=1;c.beginPath();
+ if(y0<0&&y1>0){c.moveTo(0,Y(0));c.lineTo(W,Y(0))}if(x0<0&&x1>0){c.moveTo(X(0),0);c.lineTo(X(0),H)}c.stroke()}
+function curve(f,x0,x1,col,w){c.strokeStyle=col||TL;c.lineWidth=w||3;c.beginPath();let on=0;for(let i=0;i<=400;i++){const x=x0+(x1-x0)*i/400,y=f(x);
+ if(isFinite(y)&&Math.abs(Y(y))<3*H){on?c.lineTo(X(x),Y(y)):c.moveTo(X(x),Y(y));on=1}else on=0}c.stroke()}
+function node(x,y,fill,r){c.fillStyle=fill?"#FDF0E6":"#fff";c.strokeStyle=O;c.lineWidth=3;c.beginPath();c.arc(X(x),Y(y),r||9,0,7);c.fill();c.stroke()}
+function line(a,b,d,e,col,w,dash){c.strokeStyle=col;c.lineWidth=w||2;c.setLineDash(dash||[]);c.beginPath();c.moveTo(X(a),Y(b));c.lineTo(X(d),Y(e));c.stroke();c.setLineDash([])}
+const fx=(v,k)=>(+v).toFixed(k===undefined?3:k);
+function draw(){const a=+$("a").value,h=+$("h").value,f=x=>x*x;$("va").textContent=fx(a,1);$("vh").textContent=fx(h,2);frame(-3,3,-1,6);curve(f,-3,3);
+ line(-3,f(a)+2*a*(-3-a),3,f(a)+2*a*(3-a),TL,2,[6,5]);
+ if(Math.abs(h)>0.001){const m=(f(a+h)-f(a))/h;line(-3,f(a)+m*(-3-a),3,f(a)+m*(3-a),O,3);node(a+h,f(a+h),1)}
+ node(a,f(a),0);const m=Math.abs(h)>0.001?(f(a+h)-f(a))/h:2*a;
+ $("fo").innerHTML="m<sub>sec</sub> = (f(a+h)−f(a))/h = <span class=ok>"+fx(m)+"</span> &nbsp; → &nbsp; f′(a) = 2a = "+fx(2*a);
+ $("no").textContent="Línea punteada: tangente. Línea naranja: secante por (a, f(a)) y (a+h, f(a+h)).";}
+$("a").oninput=$("h").oninput=draw;draw();
+const EX=[["f(x)=x³−2x. Calcula f′(2) =", 10], ["f(x)=x·eˣ. Calcula f′(0) =", 1], ["f(x)=(2x+1)³. Calcula f′(1) =", 54], ["Pendiente de la tangente a f(x)=ln x en x=2 =", 0.5], ["s(t)=t³−6t²+9t. Aceleración en t=3 (s″(3)) =", 6]];let hit=new Set();
+EX.forEach((e,i)=>{const d=document.createElement("div");d.className="ex";d.innerHTML=(i+1)+") "+e[0]+' <input type="number" step="any"><button>Comprobar</button> <span></span>';
+ d.querySelector("button").onclick=()=>{const v=parseFloat(d.querySelector("input").value),ok=Math.abs(v-e[1])<0.011,s=d.querySelector("span");
+ s.className=ok?"g":"b";s.textContent=ok?"✔ ¡Correcto!":"✘ Revisa y vuelve a intentar";if(ok)hit.add(i);$("nn").textContent=hit.size};$("exs").appendChild(d)});
+</script></main></body></html>
